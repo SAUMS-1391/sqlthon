@@ -7,5 +7,5 @@ from .core import Connect
 __all__ = ['Connect']
 __version__ = "0.0.1"
 __author__ = "SAUMS"
-__email__ = "mohamnown@gmail.com"
+__email__ = "saums1391@gmail.com"
 __description__ = "Operate With SQLite3 Buy Simple"
