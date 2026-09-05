@@ -1,4 +1,4 @@
-# `Sqlthon`
+# **Sqlthon**
 
 A simple package for SQLite3 operations.
 
