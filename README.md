@@ -3,10 +3,9 @@
 A simple package for SQLite3 operations.
 
 ## Quick Start
--------
-|i|b|r|
--------
-|s|b|r|
+```python
+from sqlthon import Connect
+```
 ## Installation
 
 ```bash
