@@ -1,7 +1,7 @@
 import sqlite3 as sq
 
 
-class DB:
+class Connect:
     __slots__ = ("_con", "_cur", "_changes")
     def __init__(self, path: str) -> None:
         self._con = sq.connect(path)
