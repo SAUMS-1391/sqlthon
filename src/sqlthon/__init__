@@ -5,7 +5,7 @@ Sqlthon - A Simple Package For SQLite3 Operations.
 from .core import Connect
 
 __all__ = ['Connect']
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __author__ = "SAUMS"
 __email__ = "saums1391@gmail.com"
 __description__ = "Operate With SQLite3 Buy Simple"
