@@ -23,7 +23,7 @@ db.save_to_data_base()
 ```
 
 | 1 |
------
+---
 | a |
 ## Installation
 
