@@ -1,1 +1,9 @@
+site_name: Sqlthon
+site_description: A simple package for SQLite3 operations
+repo_url: https://github.com/SAUMS-1391/sqlthon
 
+theme:
+  name: material
+
+nav:
+  - Home: index.md
