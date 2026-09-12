@@ -22,13 +22,9 @@ db.add_record(
 db.save_to_data_base()
 ```
 
-## پارامترهای add_table
-
-| پارامتر | نوع | ضروری | توضیح |
-|---------|-----|-------|-------|
-| `name_table` | `str` | ✅ | نام جدول |
-| `*columns` | `Column` | ✅ | ستون‌های جدول |
-| `if_not_exist` | `bool` | ❌ | اگه True باشه، خطا نمیده |
+| 1 |
+-----
+| a |
 ## Installation
 
 ```bash
