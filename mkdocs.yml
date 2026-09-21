@@ -5,5 +5,7 @@ repo_url: https://github.com/SAUMS-1391/sqlthon
 theme:
   name: material
 
+docs_dir: docs
+
 nav:
   - خانه: index.md
