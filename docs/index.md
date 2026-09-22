@@ -707,13 +707,13 @@ db.run_query("CREATE VIEW adults AS SELECT * FROM users WHERE age >= 18")
 
 بهینه‌تر کردن حجم و سرعت دیتابیس.
 
-**خروجی:** `None`
-
 ```python
-db.optimize()
+db.add_table("users", ("id", INT), ("name", STR))
+db.add_record("users", (1, "Ali"))
+db.save_to_database()
 ```
+**نکته:** این متد کمی زمان می‌برد تا اجرا شود. و اینکه خودش تغییرات را اعمال می‌کند که در واقع یعنی `save_to_database()` می‌زند.
 
-**نکته:** این تابع کمی زمان می‌برد و اینکه خودش قبل از بهینه کردن تغییرات را ذخیره می‌کند که در واقع یعنی save_to_database() می‌زند.
 ---
 
 ### save_to_database
