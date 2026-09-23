@@ -5,21 +5,25 @@ A simple package for SQLite3 operations.
 
 ## Quick Start
 ```python
-from sqlthon import Connect
+from sqlthon import Connect, Field
+from sqlthon.keywords import *
 
-db = Connect('PATH_FILE')
+db = Connect("test.db")
 
 db.add_table(
-    'TABLE_NAME',
-    db.Column(name='NAME_COLUMN')
+    "users",
+    ("id", INT, [PRIMARY_KEY, AUTO_INCREMENT]),
+    ("name", STR, [NOT_NULL]),
+    ("email", STR, [UNIQUE])
 )
 
-db.add_record(
-    'TABLE_NAME',
-    ['VALUE']
-)
+db.add_record("users", (1, "Ali", "ali@example.com"))
+db.save_to_database()
 
-db.save_to_data_base()
+result = db.find_record("users", condition=Field("id") == 1)
+print(result)
+
+db.close()
 ```
 
 ## Installation
