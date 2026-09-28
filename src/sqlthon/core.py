@@ -1,106 +1,301 @@
-import sqlite3 as sq
+class Field:
+    __slots__ = ("name",)
+    def __init__(self, name):
+        self.name = name
+    
+    def __gt__(self, value): return _Expression(self, ">", value)
+    def __lt__(self, value): return _Expression(self, "<", value)
+    def __ge__(self, value): return _Expression(self, ">=", value)
+    def __le__(self, value): return _Expression(self, "<=", value)
+    def __eq__(self, value): return _Expression(self, "=", value)
+    def __ne__(self, value): return _Expression(self, "!=", value)
 
+
+class _Expression:
+    __slots__ = ("left", "op", "right")
+    def __init__(self, left, op, right):
+        self.left = left
+        self.op = op
+        self.right = right
+    
+    def __and__(self, other):
+        return _Expression(self, "AND", other)
+    def __or__(self, other):
+        return _Expression(self, "OR", other)
+
+
+class _Aggregate:
+    __slots__ = ("func", "column")
+    def __init__(self, func, column="*"):
+        self.func = func
+        self.column = column
+    
+    def __gt__(self, value): return _Expression(self, ">", value)
+    def __lt__(self, value): return _Expression(self, "<", value)
+    def __ge__(self, value): return _Expression(self, ">=", value)
+    def __le__(self, value): return _Expression(self, "<=", value)
+    def __eq__(self, value): return _Expression(self, "=", value)
+    def __ne__(self, value): return _Expression(self, "!=", value)
+    
+    def __str__(self):
+        return f"{self.func}({self.column})"
+
+
+def _compile(expr):
+    if isinstance(expr.left, _Expression) or isinstance(expr.right, _Expression):
+        left_sql, left_params = _compile(expr.left)
+        right_sql, right_params = _compile(expr.right)
+        sql = f"{left_sql} {expr.op} {right_sql}"
+        params = left_params + right_params
+        return sql, params
+    elif isinstance(expr.left, _Aggregate):
+        sql = f"{expr.left} {expr.op} ?"
+        params = (expr.right,)
+        return sql, params
+    else:
+        sql = f'"{expr.left.name}" {expr.op} ?'
+        params = (expr.right,)
+        return sql, params
+        
 
 class Connect:
-    __slots__ = ("_con", "_cur", "_changes")
-    def __init__(self, path: str) -> None:
-        self._con = sq.connect(path)
+    __slots__ = ("_con", "_cur", "_changes", "_path")
+    def __init__(self, database_path: str) -> None:
+        from sqlite3 import connect as _cn
+        self._path = database_path
+        self._con = _cn(database_path)
         self._cur = self._con.cursor()
-        self._changes = []
+        self._changes: list = []
+        del _cn
     
-        
-    class Column:
-        __slots__ = ("_name", "_type", "_limits")
-        def __init__(self, name_column: str, type: str="", limits: list=[]):
-            self._name = name_column
-            self._type = " "+type if type else ""
-            self._limits = limits
-    
-    
-    def add_table(self, name_table: str, *columns: Column, if_not_exist: bool=False) -> None:
-        text = "CREATE TABLE "
-        if if_not_exist:
-            text += "IF NOT EXISTS "
-        text += f"{name_table} ("
+    # ____________| TABLE |____________
+    def add_table(self, table_name: str, *columns: tuple, if_not_exists=False) -> None:
+        query = "CREATE TABLE "
+        if if_not_exists:
+            query += "IF NOT EXISTS "
+        query += f"{table_name} ("
         for column in columns:
-            text += column._name + column._type
-            if column._limits:
-                text += " " + str(column._limits).replace("[", "").replace("'", "").replace("]", "").replace(",", "")
-            text += ", "
-        text = f"{text[:-2]})"
+            name, type = column[0], column[1]
+            try:
+                limits = column[2]
+                query += f"{name} {type} {" ".join(limits)}"
+            except:
+                query += f"{name} {type}"
+
+            query += ", "
+        query = query[:-2]+")"
+        self._changes.append((query,))
+    
+    def rename_table(self, old_name_table: str, new_name_table: str) -> None:
+        self._changes.append((f"ALTER TABLE {old_name_table} RENAME TO {new_name_table}",))
         
-        self._changes.append((text,))
+    def drop_table(self, table_name: str) -> None:
+        self._changes.append((f"DROP TABLE {table_name}",))
     
+    def exist_table(self, table_name: str) -> bool:
+        return table_name in [i[0] for i in self.run_query("SELECT name FROM sqlite_master WHERE type='table'")]
     
-    def add_record(self, name_table: str, *record: list) -> None:
-        self._changes.append((f"INSERT INTO {name_table} VALUES ({"?, "*(len(record)-1)}?)", record))
+    def copy_table(self, table_name: str, new_name_table: str) -> None:
+        self._changes.append((f"CREATE TABLE {new_name_table} AS SELECT * FROM {table_name}"),)
     
+    def get_tables(self) -> list:
+        return [i[0] for i in self.run_query("SELECT name FROM sqlite_master WHERE type='table'")]
     
-    def find_table(self, word: str="") -> list:
-        self._cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = [tup[0] for tup in self._cur.fetchall()]
-        return [table for table in tables if word in table]
-
-
-    def find_record(self, name_table: str, columns: list|str="*", where: dict|str="") -> list:
-        text = "SELECT "
-        if type(columns) == list:
-            columns = str(columns).replace("[", "").replace("]", "").replace("'", "")
-        text += columns+" FROM "+name_table
-        if where:
-            equal = " WHERE " + str(list(where.keys())).replace("]", ", ").replace("[", "").replace("'", "").replace(", ", "=? and ")[:-5]
-            where = tuple(where.values())
-        try:
-            text += equal
-        except:
-            pass
+    # ____________| COLUMN |____________
+    def add_column(self, table_name: str, column_name: str, column_type: str, limits: list | str=[]) -> None:
+        if limits:
+            limits = " ".join(limits)
+        else:
+            limits = ""
+        self._changes.append((f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} {limits}",))
+    
+    def drop_column(self, table_name: str, column_name: str) -> None:
+        self._changes.append((f"ALTER TABLE {table_name} DROP COLUMN {column_name}",))
+    
+    def rename_column(self, table_name: str, old_name_column: str, new_name_column: str) -> None:
+        self._changes.append((f"ALTER TABLE {table_name} RENAME COLUMN {old_name_column} TO {new_name_column}",))
+    
+    def exist_column(self, table_name: str, column_name: str) -> bool:
+        return column_name in [i[1] for i in self.run_query(f"PRAGMA table_info({table_name})")]
+    
+    def get_columns(self, table_name: str) -> list:
+        return [i[1] for i in self.run_query(f"PRAGMA table_info({table_name})")]
+    
+    # ____________| RECORD |____________
+    def find_record(self, table_name: str, columns: None | tuple=None, compound: None | tuple=None, condition: None | _Expression=None, bundle: None | tuple=None, filter_bundle: None | tuple=None, sort: None | tuple=None, several: None | int=None, jump: int=0, unique: bool=False):
+        query = "SELECT "
+        param = ()
+        if unique:
+            query += "DISTINCT "
+        query += f"{', '.join(columns) if columns else '*'} FROM {table_name}"
+        if compound:
+            query += f" {compound[0]} JOIN \"{compound[1]}\" ON {compound[2]} = {compound[3]}"
+        if condition:
+            _: tuple = _compile(condition)
+            query += f" WHERE {_[0]}"
+            param += _[1]
+            del _
+        if bundle:
+            query += f" GROUP BY {", ".join(bundle)}"
+        if filter_bundle:
+            __: tuple = _compile(filter_bundle)
+            query += f" HAVING {__[0]}"
+            param += __[1]
+            del __
             
-        self._cur.execute(text, where)
-        return self._cur.fetchall()
-    
-    
-    def delete_table(self, name_table: str):
-        self._changes.append((f"DROP TABLE {name_table}",))
-    
-    
-    def delete_record(self, name_table: str, info_record: dict={}) -> None:
-        text = f"DELETE FROM {name_table}"
-        if info_record:
-            text += " WHERE "
-            equal = tuple(info_record.values())
-            info_record = str(list(info_record.keys())).replace("[", "").replace("'", "").replace("]", ", ").replace(", ", "=? ").replace(" ", " AND ")[:-5]
-        try:
-            equal
-            self._changes.append((text+info_record, equal))
-        except:
-            self._changes.append((text,))
+        if sort:
+            query += " ORDER BY "
+            if sort[-1].upper() == "ASC" or sort[-1].upper() == "DESC":
+               query += f"{", ".join(sort[:-1])} {sort[-1]}"
+            else:
+                query += ", ".join(sort)
+        if several is not None:
+            query += f" LIMIT {several}"
+            if jump:
+                query += f" OFFSET {jump}"
+        return self.run_query(query, param)
         
-        
-    def edit_record(self, name_table: str, new_record: dict, old_record: dict) -> None:
-        text = "UPDATE "+name_table+" SET "
-        equal = tuple(old_record.values())+tuple(new_record.values())
-        old_record = str(list(old_record.keys())).replace("[", "").replace("'", "").replace("]", ", ").replace(", ", "=? ").replace(" ", ", ")[:-2]
-        new_record = str(list(new_record.keys())).replace("[", "").replace("'", "").replace("]", ", ").replace(", ", "=? ").replace(" ", " AND ")[:-4]
-        
-        text += old_record+" WHERE "+new_record
-        self._changes.append((text, equal))
+    def add_record(self, table_name: str, record_info: tuple) -> None:
+        self._changes.append((f"INSERT INTO {table_name} VALUES({', '.join(['?']*len(record_info))})", record_info))
     
+    def add_records(self, table_name: str, info_records: tuple) -> None:
+        self._cur.executemany(f"INSERT INTO {table_name} VALUES ({", ".join(["?"]*len(info_records[0]))})", info_records)
+        self._con.commit()
+        
+    def delete_record(self, table_name, condition):
+        query = f"DELETE FROM {table_name}"
+        sql_where, params = _compile(condition)
+        query += " WHERE " + sql_where
+        self._changes.append((query, params))
     
-    def run_code(self, code: str, parameters: tuple=()) -> list | None:
+    def delete_all_record(self, table_name: str) -> None:
+        self._changes.append((f"DELETE FROM {table_name}",))
+    
+    def edit_record(self, table_name, new_info_record, condition=None):
+        query = f"UPDATE {table_name} SET "
+        params = ()
+        
+        set_parts = []
+        for key, value in new_info_record.items():
+            set_parts.append(f'"{key}" = ?')
+            params += (value,)
+        query += ", ".join(set_parts)
+        
+        if condition:
+            sql_where, where_params = _compile(condition)
+            query += " WHERE " + sql_where
+            params += where_params
+        
+        self._changes.append((query, params))
+    
+    def count_record(self, table_name: str) -> int:
+        return self.run_query(f"SELECT COUNT(*) FROM {table_name}")[0][0]
+    
+    def upsert_record(self, table_name: str, info_record: tuple, conflict: tuple) -> None:
+        query = f"INSERT INTO {table_name} VALUES ({", ".join(["?"]*len(info_record))}) ON CONFLICT(\"{'", "'.join(conflict)}\") DO UPDATE SET "
+        param = info_record
+        colue = dict(zip(self.get_columns(table_name), info_record)) # columns value
+        for i in conflict:
+            del colue[i]
+        for key, value in colue.items():
+            query += f'"{key}"=?, '
+            param += (value,)
+        query = query[:-2]
+        self._changes.append((query, param))
+    
+    # ____________| INDEX |_________
+    def add_index(self, table_name: str, column_name: str, unique: bool=False) -> None:
+        self._changes.append((f"CREATE INDEX{" UNIQUE" if unique else ""} {table_name}_{column_name} ON {table_name} ({column_name})",))
+    
+    def delete_index(self, table_name: str, column_name: str) -> None:
+        self._changes.append((f"DROP INDEX {table_name}_{column_name}",))
+    
+    # ____________| VIEW |_________
+    def add_view(self, view_name: str, query: str) -> None:
+        self._changes.append((f"CREATE VIEW {view_name} AS {query}",))
+    
+    def delete_view(self, view_name: str) -> None:
+        self._changes.append((f"DROP VIEW {view_name}",))
+    
+    def exist_view(self, view_name: str) -> bool:
+        return view_name in [i[0] for i in self.run_query("SELECT name FROM sqlite_master WHERE type='view'")]
+    
+    # ____________| BACKUP |_________
+    def backup_database(self, backup_path: str) -> None:
+        from shutil import copy2
+        self._con.commit()
+        copy2(self._path, backup_path)
+    
+    # ____________| PANDAS |_________
+    def to_dataframe(self, table_name: str) -> "pd.DataFrame":
+        import pandas as pd
+        columns = self.get_columns(table_name)
+        result = self.run_query(f"SELECT * FROM {table_name}")
+        return pd.DataFrame(result, columns=columns)
+    
+    # ____________| CSV |_________
+    def load_csv(self, table_name: str, csv_path: str) -> None:
+        import csv as _csv
+        
+        with open(csv_path) as file:
+            reader = _csv.reader(file)
+            header = next(reader)
+            
+            self.add_table(table_name, (header[0], "TEXT"))
+            for column in header[1:]:
+                self.add_column(table_name, column, "TEXT")
+            
+            self.save_to_database()
+            
+            records = []
+            for row in reader:
+                records.append(tuple(row))
+            if records:
+                self.add_records(table_name, tuple(records))
+            
+    def to_csv(self, table_name: str, csv_path: str) -> None:
+        import csv as _csv
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = _csv.writer(f)
+            writer.writerow(self.get_columns(table_name))
+            for row in self.find_record(table_name):
+                writer.writerow(row)
+    # ____________| OTHER |_________
+    def last_id(self) -> int:
+        return self.run_query("SELECT last_insert_rowid()")[0][0]
+    
+    def database_info(self) -> dict:
+        from os.path import basename, exists, getsize
+        return {
+            "name": basename(self._path),
+            "size": getsize(self._path) if exists(self._path) else 0,
+            "count_tables": len(self.get_tables())
+        }
+        
+    # ____________| BASIC |_________
+    def run_query(self, code: str, parameters: tuple=()) -> list:
         self._cur.execute(code, parameters)
         self._con.commit()
-        try:
-            return self._cur.fetchall()
-        except:
-            pass
-    
-    
-    def close(self):
-        self._con.close()
-    
+        return self._cur.fetchall()
+        
+    def optimize(self) -> None:
+        self.save_to_database()
+        self._cur.execute("VACUUM")
+        self._con.commit()
 
-    def save_to_data_base(self) -> None:
+    def save_to_database(self) -> None:
         with self._con:
             for sql_code in self._changes:
                 self._cur.execute(*sql_code)
         self._changes.clear()
+    
+    def close(self):
+        self._con.close()
+    
+    # ____________| MAGICALS |_________
+    def __enter__(self) -> "Connect":
+        return self
+    
+    def __exit__(self, exc_type, exc_value, exc_tb) -> None:
+        self.save_to_database()
+        self.close()
