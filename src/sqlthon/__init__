@@ -1,11 +1,21 @@
 """
-Sqlthon - A Simple Package For SQLite3 Operations.
+A Simple Package For SQLite3 Operations.
+
+ |||||  ||||  ||    |||||| ||  || |||||| ||  ||
+||     ||  || ||      ||   ||  || ||  || ||| ||
+ ||||  ||  || ||      ||   |||||| ||  || ||||||
+    ||  ||||  ||      ||   ||  || ||  || || |||
+|||||      || ||||||  ||   ||  || |||||| ||  ||
+
+Github: https://Github.com/saums-1391/sqlthon
+Channel: https://ble.ir/saums_channel
+
 """
 
-from .core import Connect
+from .core import Connect, Field
 
-__all__ = ['Connect']
-__version__ = "0.0.2"
+__all__ = ['Connect', 'Field']
+__version__ = '0.0.12'
 __author__ = "SAUMS"
 __email__ = "saums1391@gmail.com"
 __description__ = "Operate With SQLite3 Buy Simple"
