@@ -17,22 +17,18 @@ pip install sqlthon
 from sqlthon import Connect, Field
 from sqlthon.keywords import *
 
-db = Connect("test.db")
-
-db.add_table(
-    "users",
-    ("id", INT, [PRIMARY_KEY, AUTO_INCREMENT]),
-    ("name", STR, [NOT_NULL]),
-    ("email", STR, [UNIQUE])
-)
-
-db.add_record("users", (1, "Ali", "ali@example.com"))
-db.save_to_database()
-
-result = db.find_record("users", condition=Field("id") == 1)
-print(result)
-
-db.close()
+with Connect("test.db") as db:
+    db.add_table(
+        "users",
+        ("id", INT, [PRIMARY_KEY, AUTO_INCREMENT]),
+        ("name", STR, [NOT_NULL]),
+        ("email", STR, [UNIQUE])
+    )
+    db.add_record("users", (1, "Ali", "ali@example.com"))
+    db.save_to_database()
+    
+    result = db.find_record("users", condition=Field("id") == 1)
+    print(result)
 ```
 
 ---
@@ -598,6 +594,23 @@ db.load_csv("csv_table", "example.csv")
 
 ---
 
+### to_csv
+
+ذخیره کردن در یک فایل .csv.
+
+| پارامتر | اجباری/اختیاری | نوع | توضیحات |
+|---------|----------------|-----|---------|
+| `table_name` | **اجباری** | `str` | نام جدول |
+| `csv_path` | **اجباری** | `str` | مسیر فایل |
+
+```python
+db.to_csv('users', r'example.csv')
+```
+
+**نکته:** این متد خودش تغییرات را ذخیره نمی‌کند. پس قبل از صدا زدن این متد `save_to_database()` رو صدا بزنید. و اینکه اگه فایل از قبل وجود داشته باشه اون فایل قبلی رو پاک می‌کنه.
+
+---
+
 ## انواع داده
 
 | نام | توضیحات |
@@ -742,43 +755,40 @@ db.close()
 from sqlthon import Connect, Field
 from sqlthon.keywords import *
 
-db = Connect("shop.db")
-
-db.add_table(
-    "users",
-    ("id", INT, [PRIMARY_KEY, AUTO_INCREMENT]),
-    ("name", STR, [NOT_NULL]),
-    ("email", STR, [UNIQUE]),
-    ("city", STR)
-)
-
-db.add_table(
-    "orders",
-    ("id", INT, [PRIMARY_KEY, AUTO_INCREMENT]),
-    ("user_id", INT),
-    ("price", FLOAT)
-)
-
-db.add_record("users", (1, "Ali", "ali@example.com", "Tehran"))
-db.add_record("users", (2, "Sara", "sara@example.com", "Shiraz"))
-db.add_record("orders", (1, 1, 100.0))
-db.add_record("orders", (2, 1, 200.0))
-
-db.save_to_database()
-
-result = db.find_record(
-    "users",
-    columns=("users.name", "orders.price"),
-    compound=("LEFT", "orders", "users.id", "orders.user_id")
-)
-
-print(result)
-
-db.close()
+with Connect("shop.db") as db:
+    db.add_table(
+        "users",
+        ("id", INT, [PRIMARY_KEY, AUTO_INCREMENT]),
+        ("name", STR, [NOT_NULL]),
+        ("email", STR, [UNIQUE]),
+        ("city", STR)
+    )
+    
+    db.add_table(
+        "orders",
+        ("id", INT, [PRIMARY_KEY, AUTO_INCREMENT]),
+        ("user_id", INT),
+        ("price", FLOAT)
+    )
+    
+    db.add_record("users", (1, "Ali", "ali@example.com", "Tehran"))
+    db.add_record("users", (2, "Sara", "sara@example.com", "Shiraz"))
+    db.add_record("orders", (1, 1, 100.0))
+    db.add_record("orders", (2, 1, 200.0))
+    
+    db.save_to_database()
+    
+    result = db.find_record(
+        "users",
+        columns=("users.name", "orders.price"),
+        compound=("LEFT", "orders", "users.id", "orders.user_id")
+    )
+    
+    print(result)
 ```
 
 ---
 
-**آخرین به‌روزرسانی:** نسخه 0.0.11
+**آخرین به‌روزرسانی:** 0.0.12
 **سازنده:** SAUMS
 **ایمیل:** saums1391@gmail.com
