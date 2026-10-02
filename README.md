@@ -22,6 +22,11 @@ with Connect("test.db") as db:
     print(result)
 ```
 
+---
+
+## Document
+https://sqlthon.readthedocs.io/fa/latest
+
 ## Installation
 
 ```bash
