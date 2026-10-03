@@ -604,7 +604,7 @@ db.load_csv("csv_table", "example.csv")
 | `csv_path` | **اجباری** | `str` | مسیر فایل |
 
 ```python
-db.to_csv('users', r'example.csv')
+db.to_csv("csv_table", "example.csv")
 ```
 
 **نکته:** این متد خودش تغییرات را ذخیره نمی‌کند. پس قبل از صدا زدن این متد `save_to_database()` رو صدا بزنید. و اینکه اگه فایل از قبل وجود داشته باشه اون فایل قبلی رو پاک می‌کنه.
