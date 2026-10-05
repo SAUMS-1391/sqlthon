@@ -9,6 +9,26 @@ class Field:
     def __le__(self, value): return _Expression(self, "<=", value)
     def __eq__(self, value): return _Expression(self, "=", value)
     def __ne__(self, value): return _Expression(self, "!=", value)
+    def __invert__(self): return _Expression(self, "NOT", None)
+    def not_like(self, value): return _Expression(self, "NOT LIKE", value)
+    def like(self, value):
+        return _Expression(self, "LIKE", value)
+    def startswith(self, value):
+        return _Expression(self, "LIKE", f"{value}%")
+    def endswith(self, value):
+        return _Expression(self, "LIKE", f"%{value}")
+    def contains(self, value):
+        return _Expression(self, "LIKE", f"%{value}%")
+    def in_(self, value):
+        return _Expression(self, "IN", value)
+    def not_in(self, value):
+        return _Expression(self, "NOT IN", value)
+    def between(self, value):
+        return _Expression(self, "BETWEEN", value)
+    def is_null(self):
+        return _Expression(self, "IS NULL", None)
+    def is_not_null(self):
+        return _Expression(self, "IS NOT NULL", None)
 
 
 class _Expression:
@@ -45,9 +65,21 @@ def _compile(expr):
     if isinstance(expr.left, _Expression) or isinstance(expr.right, _Expression):
         left_sql, left_params = _compile(expr.left)
         right_sql, right_params = _compile(expr.right)
-        sql = f"{left_sql} {expr.op} {right_sql}"
+        sql = f"({left_sql}) {expr.op} ({right_sql})"
         params = left_params + right_params
         return sql, params
+    elif expr.op in ("IN", "NOT IN"):
+        placeholders = ", ".join(["?"] * len(expr.right))
+        sql = f'"{expr.left.name}" {expr.op} ({placeholders})'
+        params = tuple(expr.right)
+        return sql, params
+    elif expr.op == "BETWEEN":
+        sql = f'"{expr.left.name}" BETWEEN ? AND ?'
+        params = tuple(expr.right)
+        return sql, params
+    elif expr.op in ("IS NULL", "IS NOT NULL"):
+        sql = f'"{expr.left.name}" {expr.op}'
+        return sql, ()
     elif isinstance(expr.left, _Aggregate):
         sql = f"{expr.left} {expr.op} ?"
         params = (expr.right,)
@@ -221,10 +253,13 @@ class Connect:
         return view_name in [i[0] for i in self.run_query("SELECT name FROM sqlite_master WHERE type='view'")]
     
     # ____________| BACKUP |_________
-    def backup_database(self, backup_path: str) -> None:
+    def backup_database(self, backup_path: str | None=None) -> None:
         from shutil import copy2
         self._con.commit()
-        copy2(self._path, backup_path)
+        if backup_path:
+            copy2(self._path, backup_path)
+        else:
+            copy2(self._path, "".join(self._path.split(".")[:-1]))
     
     # ____________| PANDAS |_________
     def to_dataframe(self, table_name: str) -> "pd.DataFrame":
@@ -260,6 +295,7 @@ class Connect:
             writer.writerow(self.get_columns(table_name))
             for row in self.find_record(table_name):
                 writer.writerow(row)
+    
     # ____________| OTHER |_________
     def last_id(self) -> int:
         return self.run_query("SELECT last_insert_rowid()")[0][0]
@@ -275,7 +311,8 @@ class Connect:
     # ____________| BASIC |_________
     def run_query(self, code: str, parameters: tuple=()) -> list:
         self._cur.execute(code, parameters)
-        self._con.commit()
+        if not code.upper().startswith("SELECT"):
+            self._con.commit()
         return self._cur.fetchall()
         
     def optimize(self) -> None:
@@ -284,10 +321,12 @@ class Connect:
         self._con.commit()
 
     def save_to_database(self) -> None:
-        with self._con:
-            for sql_code in self._changes:
-                self._cur.execute(*sql_code)
-        self._changes.clear()
+        try:
+            with self._con:
+                for sql_code in self._changes:
+                    self._cur.execute(*sql_code)
+        finally:
+            self._changes.clear()
     
     def close(self):
         self._con.close()
