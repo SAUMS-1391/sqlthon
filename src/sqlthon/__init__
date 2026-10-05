@@ -16,7 +16,7 @@ Documentation: https://sqlthon.readthedocs.io/fa/latest/
 from .core import Connect, Field
 
 __all__ = ['Connect', 'Field']
-__version__ = '0.0.12'
+__version__ = '0.0.15'
 __author__ = "SAUMS"
 __email__ = "saums1391@gmail.com"
 __description__ = "Operate With SQLite3 Buy Simple"
