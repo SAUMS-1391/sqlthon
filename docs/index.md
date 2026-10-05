@@ -659,13 +659,23 @@ AVG("age")
 
 ## Field
 
-`Field` برای ساخت شرط‌های پیچیده استفاده می‌شود. با عملگرهای پایتون (`>`, `<`, `==`, `&`, `|`) کار می‌کند.
+`Field` برای ساخت شرط‌های پیچیده استفاده می‌شود. با عملگرهای پایتون (`>`, `<`, `==`, `&`, `|`, `like`, `between`, `is_null`...) کار می‌کند.
 
 ```python
 from sqlthon import Field
 
 Field("age") > 18
 Field("name") == "Ali"
+Field("name").like("A%")
+Field("name").startswith("A")
+Field("name").endswith("i")
+Field("name").contains("li")
+Field("name").not_like("A%")
+Field("city").in_(("Tehran", "Shiraz"))
+Field("city").not_in(("Tehran",))
+Field("age").between((18, 30))
+Field("tel").is_null()
+Field("email").is_not_null()
 (Field("age") > 18) & (Field("city") == "Tehran")
 (Field("age") > 18) | (Field("city") == "Tehran")
 ```
@@ -789,7 +799,7 @@ with Connect("shop.db") as db:
 
 ---
 
-**آخرین به‌روزرسانی:** 0.0.12
+**آخرین به‌روزرسانی:** 0.0.14
 
 **سازنده:** SAUMS
 
