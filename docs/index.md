@@ -759,6 +759,70 @@ db.close()
 
 ---
 
+## Errors
+
+### نقشه گرافیکی
+
+```text
+SqlthonError
+│
+├── YouHackerError  (PermissionError)
+│
+├── TableError
+│   ├── TableNotFoundError
+│   └── TableAlreadyExistsError
+│
+├── ColumnError
+│   └── ColumnNotFoundError
+│
+├── RecordError
+│   ├── UniqueConstraintError
+│   ├── NotNullConstraintError
+│   ├── DataTypeError
+│   ├── ForeignKeyError
+│   ├── CheckConstraintError
+│   └── PrimaryKeyError
+│
+├── QueryError
+│   ├── SyntaxError
+│   ├── NoSuchFunctionError
+│   └── WrongNumberOfArgumentsError
+│
+├── DatabaseError
+│   ├── DatabaseLockedError
+│   ├── DatabaseReadOnlyError
+│   ├── DatabaseCorruptError
+│   ├── DatabaseFullError
+│   └── DatabaseBusyError
+│
+├── IndexError
+│   ├── IndexNotFoundError
+│   └── IndexAlreadyExistsError
+│
+├── ViewError
+│   ├── ViewNotFoundError
+│   └── ViewAlreadyExistsError
+│
+├── TransactionError
+│   ├── TransactionAlreadyActiveError
+│   └── TransactionNotActiveError
+│
+├── BackupError
+│   ├── BackupPathError
+│   └── BackupPermissionError
+│
+├── CsvError
+│   ├── CsvFileNotFoundError
+│   └── CsvFormatError
+│
+├── PandasError
+│   └── PandasNotInstalledError
+│
+└── ValidationError
+    ├── InvalidColumnCountError
+    └── InvalidValueError
+```
+
 ## مثال کامل
 
 ```python
@@ -799,7 +863,7 @@ with Connect("shop.db") as db:
 
 ---
 
-**آخرین به‌روزرسانی:** 0.0.15
+**آخرین به‌روزرسانی:** 0.1.0
 
 **سازنده:** SAUMS
 
