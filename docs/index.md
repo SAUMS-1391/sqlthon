@@ -784,7 +784,7 @@ SqlthonError
 │   └── PrimaryKeyError
 │
 ├── QueryError
-│   ├── SyntaxError
+│   ├── SyntaxError_
 │   ├── NoSuchFunctionError
 │   └── WrongNumberOfArgumentsError
 │
@@ -795,7 +795,7 @@ SqlthonError
 │   ├── DatabaseFullError
 │   └── DatabaseBusyError
 │
-├── IndexError
+├── IndexError_
 │   ├── IndexNotFoundError
 │   └── IndexAlreadyExistsError
 │
@@ -863,7 +863,7 @@ with Connect("shop.db") as db:
 
 ---
 
-**آخرین به‌روزرسانی:** 0.1.0
+**آخرین به‌روزرسانی:** 0.1.5
 
 **سازنده:** SAUMS
 
