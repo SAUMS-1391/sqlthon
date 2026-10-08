@@ -9,14 +9,13 @@ A Simple Package For SQLite3 Operations.
 
 Github: https://Github.com/saums-1391/sqlthon
 Channel: https://ble.ir/saums_channel
-Documentation: https://sqlthon.readthedocs.io/fa/latest/
 
 """
 
-from .core import Connect, Field
+from .core import *
 
-__all__ = ['Connect', 'Field']
-__version__ = '0.0.15'
+__all__ = ['Field', 'Connect', 'SqlthonError', 'YouHackerError', 'TableError', 'TableNotFoundError', 'TableAlreadyExistsError', 'ColumnError', 'ColumnNotFoundError', 'RecordError', 'UniqueConstraintError', 'NotNullConstraintError', 'DataTypeError', 'ForeignKeyError', 'CheckConstraintError', 'PrimaryKeyError', 'QueryError', 'SyntaxError_', 'NoSuchFunctionError', 'WrongNumberOfArgumentsError', 'DatabaseError', 'DatabaseLockedError', 'DatabaseReadOnlyError', 'DatabaseCorruptError', 'DatabaseFullError', 'DatabaseBusyError', 'IndexError_', 'IndexNotFoundError', 'IndexAlreadyExistsError', 'ViewError', 'ViewNotFoundError', 'ViewAlreadyExistsError', 'TransactionError', 'TransactionAlreadyActiveError', 'TransactionNotActiveError', 'BackupError', 'BackupPathError', 'BackupPermissionError', 'CsvError', 'CsvFileNotFoundError', 'CsvFormatError', 'PandasError', 'PandasNotInstalledError', 'ValidationError', 'InvalidColumnCountError', 'InvalidValueError']
+__version__ = '0.1.4'
 __author__ = "SAUMS"
 __email__ = "saums1391@gmail.com"
 __description__ = "Operate With SQLite3 Buy Simple"
