@@ -24,8 +24,7 @@ with Connect("test.db") as db:
 
 ---
 
-## Document
-https://sqlthon.readthedocs.io/fa/latest
+## [Document](https://sqlthon.readthedocs.io/fa/latest)
 
 ## Installation
 
