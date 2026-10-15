@@ -1,30 +1,20 @@
-# **Sqlthon**
+# Sqlthon
 
-A simple package for SQLite3 operations.
+A lightweight, Pythonic layer for SQLite3 — designed for developers who don't know SQL.
 
+## Why Sqlthon?
 
-## Quick Start
-```python
-from sqlthon import Connect, Field
-from sqlthon.keywords import *
+SQLite is powerful, but using it requires knowing SQL. Sqlthon lets you work with SQLite databases using **pure Python objects and methods** — no SQL queries needed. Just define your tables and fields, and Sqlthon handles the rest.
 
-with Connect("test.db") as db:
-    db.add_table(
-        "users",
-        ("id", INT, [PRIMARY_KEY, AUTO_INCREMENT]),
-        ("name", STR, [NOT_NULL]),
-        ("email", STR, [UNIQUE])
-    )
-    db.add_record("users", (1, "Ali", "ali@example.com"))
-    db.save_to_database()
-    
-    result = db.find_record("users", condition=Field("id") == 1)
-    print(result)
-```
+**Sqlthon is:**
+- ✅ A simple wrapper for people who don't know SQL
+- ✅ A lightweight, Pythonic way to work with SQLite3
+- ✅ Perfect for small scripts, prototypes, and learning projects
 
----
-
-## [Document](https://sqlthon.readthedocs.io/fa/latest)
+**Sqlthon is NOT:**
+- ❌ A replacement for the built-in `sqlite3` module
+- ❌ A full-featured ORM
+- ❌ Designed for large, complex database schemas
 
 ## Installation
 
