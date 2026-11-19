@@ -16,6 +16,8 @@ SQLite is powerful, but using it requires knowing SQL. Sqlthon lets you work wit
 - ❌ A toy package for tiny scripts
 - ❌ Feature-complete yet — it's under active development
 
+## [Document](https://sqlthon.readthedocs.io/fa/latest/)
+
 ## Installation
 
 ```bash
