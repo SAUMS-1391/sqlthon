@@ -5,17 +5,17 @@ A Simple Package For SQLite3 Operations.
 ||     ||  || ||      ||   ||  || ||  || ||| ||
  ||||  ||  || ||      ||   |||||| ||  || ||||||
     ||  ||||  ||      ||   ||  || ||  || || |||
-|||||      || ||||||  ||   ||  || |||||| ||  ||
+|||||      || ||||||  ||   ||  || ||  || ||||||
 
 Github: https://Github.com/saums-1391/sqlthon
-Channel: https://ble.ir/saums_channel
-
+Channel: https://ble.ir/Sqlthon
 """
 
-from .core import *
+from .core import Connect, Field
 
-__all__ = ['Field', 'Connect', 'SqlthonError', 'YouHackerError', 'TableError', 'TableNotFoundError', 'TableAlreadyExistsError', 'ColumnError', 'ColumnNotFoundError', 'RecordError', 'UniqueConstraintError', 'NotNullConstraintError', 'DataTypeError', 'ForeignKeyError', 'CheckConstraintError', 'PrimaryKeyError', 'QueryError', 'SyntaxError_', 'NoSuchFunctionError', 'WrongNumberOfArgumentsError', 'DatabaseError', 'DatabaseLockedError', 'DatabaseReadOnlyError', 'DatabaseCorruptError', 'DatabaseFullError', 'DatabaseBusyError', 'IndexError_', 'IndexNotFoundError', 'IndexAlreadyExistsError', 'ViewError', 'ViewNotFoundError', 'ViewAlreadyExistsError', 'TransactionError', 'TransactionAlreadyActiveError', 'TransactionNotActiveError', 'BackupError', 'BackupPathError', 'BackupPermissionError', 'CsvError', 'CsvFileNotFoundError', 'CsvFormatError', 'PandasError', 'PandasNotInstalledError', 'ValidationError', 'InvalidColumnCountError', 'InvalidValueError']
-__version__ = '0.1.4'
+__all__ = ['Field', 'Connect']
+
+__version__ = '0.2.0'
 __author__ = "SAUMS"
-__email__ = "saums1391@gmail.com"
-__description__ = "Operate With SQLite3 Buy Simple"
+__email__ = "supportsqlthon@gmail.com"
+__description__ = "A Simple Package For SQLite3 Operations."
