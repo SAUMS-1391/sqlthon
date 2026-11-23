@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sqlthon"
-version = "0.0.2"
+version = '0.2.0'
 description = "A simple package for SQLite3 operations"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "SAUMS", email = "mohamnown@gmail.com"}
+    {name = "SAUMS", email = "supportsqlthon@gmail.com"}
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
