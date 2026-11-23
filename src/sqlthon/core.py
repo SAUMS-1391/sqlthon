@@ -1,7 +1,10 @@
+from .errors import (SqlthonError, YouHackerError, TableError, TableNotFoundError, TableAlreadyExistsError, ColumnError, ColumnNotFoundError, RecordError, UniqueConstraintError, NotNullConstraintError, DataTypeError, ForeignKeyError, CheckConstraintError, PrimaryKeyError, QueryError, SyntaxError_, NoSuchFunctionError, WrongNumberOfArgumentsError, DatabaseError, DatabaseLockedError, DatabaseReadOnlyError, DatabaseCorruptError, DatabaseFullError, DatabaseBusyError, IndexError_, IndexNotFoundError, IndexAlreadyExistsError, ViewError, ViewNotFoundError, ViewAlreadyExistsError, TransactionError, TransactionAlreadyActiveError, TransactionNotActiveError, BackupError, BackupPathError, BackupPermissionError, CsvError, CsvFileNotFoundError, CsvFormatError, PandasError, PandasNotInstalledError, ValidationError, InvalidColumnCountError, InvalidValueError)
 class Field:
     __slots__ = ("name",)
     def __init__(self, name):
         _analysis_code(name)
+        if "." in name:
+            name = name.replace(".", "\".\"")
         self.name = name
     
     def __gt__(self, value): return _Expression(self, ">", value)
@@ -165,9 +168,12 @@ class Connect:
     def add_column(self, table_name: str, column_name: str, column_type: str, limits: list | str=[]) -> None:
         _analysis_code(table_name)
         _analysis_code(column_name)
-        _analysis_code(column_type)
+        if column_type.count(" ") > 2 or "--" in column_type or "/*" in column_type:
+            raise YouHackerError(f"you hacker for {column_type!r}.") from None
         if limits:
-            _analysis_code(limits)
+            for limit in limits:
+                if "--" in limit:
+                    raise YouHackerError(f"you hacker for {limit!r}.") from None
             limits = " ".join(limits)
         else:
             limits = ""
@@ -215,7 +221,7 @@ class Connect:
             del _
         if bundle:
             _analysis_code(bundle)
-            query += f" GROUP BY {", ".join(bundle)}"
+            query += f' GROUP BY {", ".join(bundle)}'
         if filter_bundle:
             __: tuple = _compile(filter_bundle)
             query += f" HAVING {__[0]}"
@@ -293,17 +299,25 @@ class Connect:
         colue = dict(zip(self.get_columns(table_name), info_record)) # columns value
         for i in conflict:
             del colue[i]
-        for key, value in colue.items():
-            query += f'"{key}"=?, '
-            param += (value,)
-        query = query[:-2]
+        if colue:
+            for key, value in colue.items():
+                query += f'"{key}"=?, '
+                param += (value,)
+            query = query[:-2]
+        else:
+            query = query.replace(" DO UPDATE SET", " DO NOTHING")
         self._changes.append((query, param))
     
     # ____________| INDEX |_________
     def add_index(self, table_name: str, column_name: str, unique: bool=False) -> None:
         _analysis_code(table_name)
         _analysis_code(column_name)
-        self._changes.append((f"CREATE INDEX{" UNIQUE" if unique else ""} {table_name}_{column_name} ON {table_name} ({column_name})",))
+    
+        self._changes.append((
+            f"CREATE {'UNIQUE ' if unique else ''}INDEX "
+            f"{table_name}_{column_name} ON "
+            f"{table_name} ({column_name})",
+        ))
     
     def delete_index(self, table_name: str, column_name: str) -> None:
         _analysis_code(table_name)
@@ -312,7 +326,8 @@ class Connect:
     
     # ____________| VIEW |_________
     def add_view(self, view_name: str, query: str) -> None:
-        raise YouHackerError("add_view is disabled for security reasons.")
+        _analysis_code(view_name)
+        self._changes.append((f"CREATE VIEW {view_name} AS {query}",))
     
     def delete_view(self, view_name: str) -> None:
         _analysis_code(view_name)
@@ -323,22 +338,19 @@ class Connect:
         return view_name in [i[0] for i in self._cur.execute("SELECT name FROM sqlite_master WHERE type='view'").fetchall()]
     
     # ____________| BACKUP |_________
-    def backup_database(self, backup_path: str | None=None) -> None:
-        from shutil import copy2
-        from os.path import abspath, dirname, join
-        self._con.commit()
-        allowed_dir = dirname(abspath(self._path))
-        if backup_path:
-            if not abspath(backup_path).startswith(allowed_dir):
-                raise YouHackerError(f"you hacker for {backup_path!r}.")
-            copy2(self._path, backup_path)
-        else:
-            copy2(self._path, join(allowed_dir, "backup.db"))
+    def backup_database(self, backup_path: str) -> None:
+        self.save_to_database()
+        import sqlite3
+        with sqlite3.connect(backup_path) as target:
+            self._con.backup(target)
     
     # ____________| PANDAS |_________
     def to_dataframe(self, table_name: str) -> "pd.DataFrame":
         _analysis_code(table_name)
-        import pandas as pd
+        try:
+            import pandas as pd
+        except:
+            raise PandasNotInstalledError("you have not installed the pandas package yet.")
         columns = self.get_columns(table_name)
         result = self._cur.execute(f"SELECT * FROM {table_name}").fetchall()
         return pd.DataFrame(result, columns=columns)
@@ -396,7 +408,12 @@ class Connect:
         
     # ____________| BASIC |_________
     def run_query(self, code: str, parameters: tuple=()) -> list:
-        raise YouHackerError("run_query is disabled for security reasons.")
+        try:
+            self._cur.execute(code, parameters)
+        except Exception as e:
+            _handler_error(e)
+        self._con.commit()
+        return self._cur.fetchall()
         
     def optimize(self) -> None:
         self.save_to_database()
@@ -419,58 +436,20 @@ class Connect:
     def __enter__(self) -> "Connect":
         return self
     
-    def __exit__(self, exc_type, exc_value, exc_tb) -> None:
-        self.save_to_database()
-        self.close()
+    def __exit__(self, exc_type, exc_value, traceback) -> bool:
+        try:
+            if exc_type is None:
+                self.save_to_database()
+            else:
+                self._changes.clear()
+                self._con.rollback()
+        finally:
+            self.close()
+    
+        return False
         
 
-# ____________| ERRORS |_________
-class SqlthonError(Exception):__module__ = None
-class YouHackerError(SqlthonError, PermissionError):__module__ = None
-class TableError(SqlthonError):__module__ = None
-class TableNotFoundError(TableError):__module__ = None
-class TableAlreadyExistsError(TableError):__module__ = None
-class ColumnError(SqlthonError):__module__ = None
-class ColumnNotFoundError(ColumnError):__module__ = None
-class RecordError(SqlthonError):__module__ = None
-class UniqueConstraintError(RecordError):__module__ = None
-class NotNullConstraintError(RecordError):__module__ = None
-class DataTypeError(RecordError):__module__ = None
-class ForeignKeyError(RecordError):__module__ = None
-class CheckConstraintError(RecordError):__module__ = None
-class PrimaryKeyError(RecordError):__module__ = None
-class QueryError(SqlthonError):__module__ = None
-class SyntaxError_(QueryError):__module__ = None
-class NoSuchFunctionError(QueryError):__module__ = None
-class WrongNumberOfArgumentsError(QueryError):__module__ = None
-class DatabaseError(SqlthonError):__module__ = None
-class DatabaseLockedError(DatabaseError):__module__ = None
-class DatabaseReadOnlyError(DatabaseError):__module__ = None
-class DatabaseCorruptError(DatabaseError):__module__ = None
-class DatabaseFullError(DatabaseError):__module__ = None
-class DatabaseBusyError(DatabaseError):__module__ = None
-class IndexError_(SqlthonError):__module__ = None
-class IndexNotFoundError(IndexError_):__module__ = None
-class IndexAlreadyExistsError(IndexError_):__module__ = None
-class ViewError(SqlthonError):__module__ = None
-class ViewNotFoundError(ViewError):__module__ = None
-class ViewAlreadyExistsError(ViewError):__module__ = None
-class TransactionError(SqlthonError):__module__ = None
-class TransactionAlreadyActiveError(TransactionError):__module__ = None
-class TransactionNotActiveError(TransactionError):__module__ = None
-class BackupError(SqlthonError):__module__ = None
-class BackupPathError(BackupError):__module__ = None
-class BackupPermissionError(BackupError):__module__ = None
-class CsvError(SqlthonError):__module__ = None
-class CsvFileNotFoundError(CsvError):__module__ = None
-class CsvFormatError(CsvError):__module__ = None
-class PandasError(SqlthonError):__module__ = None
-class PandasNotInstalledError(PandasError):__module__ = None
-class ValidationError(SqlthonError):__module__ = None
-class InvalidColumnCountError(ValidationError):__module__ = None
-class InvalidValueError(ValidationError):__module__ = None
-
-
+# ____________| ERROR |_________
 def _handler_error(e: Exception):
             msg = str(e).lower()
             
