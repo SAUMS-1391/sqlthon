@@ -1,116 +1,4 @@
 from .errors import (SqlthonError, YouHackerError, TableError, TableNotFoundError, TableAlreadyExistsError, ColumnError, ColumnNotFoundError, RecordError, UniqueConstraintError, NotNullConstraintError, DataTypeError, ForeignKeyError, CheckConstraintError, PrimaryKeyError, QueryError, SyntaxError_, NoSuchFunctionError, WrongNumberOfArgumentsError, DatabaseError, DatabaseLockedError, DatabaseReadOnlyError, DatabaseCorruptError, DatabaseFullError, DatabaseBusyError, IndexError_, IndexNotFoundError, IndexAlreadyExistsError, ViewError, ViewNotFoundError, ViewAlreadyExistsError, TransactionError, TransactionAlreadyActiveError, TransactionNotActiveError, BackupError, BackupPathError, BackupPermissionError, CsvError, CsvFileNotFoundError, CsvFormatError, PandasError, PandasNotInstalledError, ValidationError, InvalidColumnCountError, InvalidValueError)
-class Field:
-    __slots__ = ("name",)
-    def __init__(self, name):
-        _analysis_code(name)
-        if "." in name:
-            name = name.replace(".", "\".\"")
-        self.name = name
-    
-    def __gt__(self, value): return _Expression(self, ">", value)
-    def __lt__(self, value): return _Expression(self, "<", value)
-    def __ge__(self, value): return _Expression(self, ">=", value)
-    def __le__(self, value): return _Expression(self, "<=", value)
-    def __eq__(self, value): return _Expression(self, "=", value)
-    def __ne__(self, value): return _Expression(self, "!=", value)
-    def __invert__(self): return _Expression(self, "NOT", None)
-    def not_like(self, value): return _Expression(self, "NOT LIKE", value)
-    def like(self, value):
-        return _Expression(self, "LIKE", value)
-    def startswith(self, value):
-        return _Expression(self, "LIKE", f"{value}%")
-    def endswith(self, value):
-        return _Expression(self, "LIKE", f"%{value}")
-    def contains(self, value):
-        return _Expression(self, "LIKE", f"%{value}%")
-    def in_(self, value):
-        return _Expression(self, "IN", value)
-    def not_in(self, value):
-        return _Expression(self, "NOT IN", value)
-    def between(self, value):
-        return _Expression(self, "BETWEEN", value)
-    def is_null(self):
-        return _Expression(self, "IS NULL", None)
-    def is_not_null(self):
-        return _Expression(self, "IS NOT NULL", None)
-
-
-class _Expression:
-    __slots__ = ("left", "op", "right")
-    def __init__(self, left, op, right):
-        self.left = left
-        self.op = op
-        self.right = right
-    
-    def __and__(self, other):
-        return _Expression(self, "AND", other)
-    def __or__(self, other):
-        return _Expression(self, "OR", other)
-
-
-class _Aggregate:
-    __slots__ = ("func", "column")
-    def __init__(self, func, column="*"):
-        if not column == "*":
-            _analysis_code(column)
-        self.func = func
-        self.column = column
-    
-    def __gt__(self, value): return _Expression(self, ">", value)
-    def __lt__(self, value): return _Expression(self, "<", value)
-    def __ge__(self, value): return _Expression(self, ">=", value)
-    def __le__(self, value): return _Expression(self, "<=", value)
-    def __eq__(self, value): return _Expression(self, "=", value)
-    def __ne__(self, value): return _Expression(self, "!=", value)
-    
-    def __str__(self):
-        return f"{self.func}({self.column})"
-
-
-def _compile(expr):
-    if isinstance(expr.left, _Expression) or isinstance(expr.right, _Expression):
-        left_sql, left_params = _compile(expr.left)
-        right_sql, right_params = _compile(expr.right)
-        sql = f"({left_sql}) {expr.op} ({right_sql})"
-        params = left_params + right_params
-        return sql, params
-    elif expr.op in ("IN", "NOT IN"):
-        placeholders = ", ".join(["?"] * len(expr.right))
-        sql = f'"{expr.left.name}" {expr.op} ({placeholders})'
-        params = tuple(expr.right)
-        return sql, params
-    elif expr.op == "BETWEEN":
-        sql = f'"{expr.left.name}" BETWEEN ? AND ?'
-        params = tuple(expr.right)
-        return sql, params
-    elif expr.op in ("IS NULL", "IS NOT NULL"):
-        sql = f'"{expr.left.name}" {expr.op}'
-        return sql, ()
-    elif isinstance(expr.left, _Aggregate):
-        sql = f"{expr.left} {expr.op} ?"
-        params = (expr.right,)
-        return sql, params
-    else:
-        sql = f'"{expr.left.name}" {expr.op} ?'
-        params = (expr.right,)
-        return sql, params
-
-
-def _analysis_code(query):
-    from re import match
-    if isinstance(query, (list, tuple)):
-        for i in query:
-            _analysis_code(i)
-        return
-    if not match("^[A-Za-z_][A-Za-z0-9_.(), ]*$", query) or any(word in query.lower() for word in ("sqlite_", "union", "select", "blob", "pragma")):
-        for i in {"NOT", "NULL", "PRIMARY", "KEY", "UNIQUE", "DEFAULT",
-            "CHECK", "AUTOINCREMENT", "REFERENCES", "COLLATE",
-            "TRUE", "FALSE", "CURRENT_TIMESTAMP", "ON", "DELETE",
-            "UPDATE", "CASCADE", "RESTRICT", "SET", "NO", "ACTION",
-            "PRECISION", "DOUBLE", "UNSIGNED", "BIG", "INT",
-            "NATIVE", "CHARACTER", "VARYING",}:
-            if not i in query:
-                raise YouHackerError(f"you hacker for {query!r}.") from None
 
 
 class Connect:
@@ -126,6 +14,8 @@ class Connect:
     # ____________| TABLE |____________
     def add_table(self, table_name: str, *columns: tuple, if_not_exists=False) -> None:
         _analysis_code(table_name)
+        if not columns:
+            raise TypeError("at least one column must be specified.") from None
         query = "CREATE TABLE "
         if if_not_exists:
             query += "IF NOT EXISTS "
@@ -449,6 +339,140 @@ class Connect:
         return False
         
 
+class Field:
+    __slots__ = ("name",)
+    def __init__(self, name):
+        _analysis_code(name)
+        if "." in name:
+            name = name.replace(".", "\".\"")
+        self.name = name
+    
+    def __gt__(self, value): return _Expression(self, ">", value)
+    def __lt__(self, value): return _Expression(self, "<", value)
+    def __ge__(self, value): return _Expression(self, ">=", value)
+    def __le__(self, value): return _Expression(self, "<=", value)
+    def __eq__(self, value): return _Expression(self, "=", value)
+    def __ne__(self, value): return _Expression(self, "!=", value)
+    def __invert__(self): return _Expression(self, "NOT", None)
+    def not_like(self, value): return _Expression(self, "NOT LIKE", value)
+    def like(self, value):
+        return _Expression(self, "LIKE", value)
+    def startswith(self, value):
+        return _Expression(self, "LIKE", f"{value}%")
+    def endswith(self, value):
+        return _Expression(self, "LIKE", f"%{value}")
+    def contains(self, value):
+        return _Expression(self, "LIKE", f"%{value}%")
+    def in_(self, value):
+        return _Expression(self, "IN", value)
+    def not_in(self, value):
+        return _Expression(self, "NOT IN", value)
+    def between(self, value):
+        return _Expression(self, "BETWEEN", value)
+    def is_null(self):
+        return _Expression(self, "IS NULL", None)
+    def is_not_null(self):
+        return _Expression(self, "IS NOT NULL", None)
+        
+
+class _Expression:
+    __slots__ = ("left", "op", "right")
+    def __init__(self, left, op, right):
+        self.left = left
+        self.op = op
+        self.right = right
+    
+    def __and__(self, other):
+        return _Expression(self, "AND", other)
+    def __or__(self, other):
+        return _Expression(self, "OR", other)
+    def __invert__(self):
+        return _Expression(self, "NOT", None)
+
+
+class _Aggregate:
+    __slots__ = ("func", "column")
+    def __init__(self, func, column="*"):
+        if not column == "*":
+            _analysis_code(column)
+        if func not in ("MAX", "MIN", "SUM", "AVG", "COUNT"):
+            raise YouHackerError(f"you hacker for {func!r}.")
+        self.func = func
+        self.column = column
+    
+    def __gt__(self, value): return _Expression(self, ">", value)
+    def __lt__(self, value): return _Expression(self, "<", value)
+    def __ge__(self, value): return _Expression(self, ">=", value)
+    def __le__(self, value): return _Expression(self, "<=", value)
+    def __eq__(self, value): return _Expression(self, "=", value)
+    def __ne__(self, value): return _Expression(self, "!=", value)
+    
+    def __str__(self):
+        return f"{self.func}({self.column})"
+
+
+def _compile(expr):
+    if isinstance(expr.left, _Expression) or isinstance(expr.right, _Expression):
+        left_sql, left_params = _compile(expr.left)
+        right_sql, right_params = _compile(expr.right)
+        sql = f"({left_sql}) {expr.op} ({right_sql})"
+        params = left_params + right_params
+        return sql, params
+    elif expr.op in ("IN", "NOT IN"):
+        placeholders = ", ".join(["?"] * len(expr.right))
+        sql = f'"{expr.left.name}" {expr.op} ({placeholders})'
+        params = tuple(expr.right)
+        return sql, params
+    elif expr.op == "BETWEEN":
+        sql = f'"{expr.left.name}" BETWEEN ? AND ?'
+        params = tuple(expr.right)
+        return sql, params
+    elif expr.op == "NOT":
+        if isinstance(expr.left, Field):
+            return f'NOT ("{expr.left.name}")', ()
+        sql, params = _compile(expr.left)
+        return f"NOT ({sql})", params
+    elif expr.op in ("IS NULL", "IS NOT NULL"):
+        sql = f'"{expr.left.name}" {expr.op}'
+        return sql, ()
+    elif isinstance(expr.left, _Aggregate):
+        sql = f"{expr.left} {expr.op} ?"
+        params = (expr.right,)
+        return sql, params
+    else:
+        sql = f'"{expr.left.name}" {expr.op} ?'
+        params = (expr.right,)
+        return sql, params
+
+
+def _analysis_code(query):
+    from re import match
+    if isinstance(query, (list, tuple)):
+        for i in query:
+            _analysis_code(i)
+        return
+    if query.startswith("CHECK "):
+        if match(r"^CHECK \([A-Za-z_][A-Za-z0-9_]*\s*(?:>=|<=|!=|=|>|<)\s*(?:-?\d+(?:\.\d+)?|'(?:[^']|'')*')\)$", query):
+            return
+        raise YouHackerError(f"you hacker for {query!r}.") from None
+    if match(r"^DEFAULT '[^']*'$", query) or query == "COUNT(*)":
+        return
+    elif not match(r"^[A-Za-z_][A-Za-z0-9_.(), ]*$", query) or any(
+        word in query.lower()
+        for word in ("sqlite_", "union", "select", "blob", "pragma")
+    ):
+        for i in {
+            "NOT", "NULL", "PRIMARY", "KEY", "UNIQUE", "DEFAULT",
+            "CHECK", "AUTOINCREMENT", "REFERENCES", "COLLATE",
+            "TRUE", "FALSE", "CURRENT_TIMESTAMP", "ON", "DELETE",
+            "UPDATE", "CASCADE", "RESTRICT", "SET", "NO", "ACTION",
+            "PRECISION", "DOUBLE", "UNSIGNED", "BIG", "INT",
+            "NATIVE", "CHARACTER", "VARYING",
+        }:
+            if not i in query:
+                raise YouHackerError(f"you hacker for {query!r}.") from None
+                
+                
 # ____________| ERROR |_________
 def _handler_error(e: Exception):
             msg = str(e).lower()
@@ -456,9 +480,6 @@ def _handler_error(e: Exception):
             if "no such table" in msg:
                 raise TableNotFoundError(f"no table with name {msg.split()[-1]!r}.") from None
             
-            elif "already exists" in msg:
-                raise TableAlreadyExistsError(f"table {msg.split()[1]!r} alredy existed.") from None
-                
             elif "no such column" in msg:
                 raise ColumnNotFoundError(f"no column with name {msg.split()[-1]!r}.") from None
             
@@ -521,6 +542,9 @@ def _handler_error(e: Exception):
             
             elif "no transaction is active" in msg:
                 raise TransactionNotActiveError(msg) from None
+            
+            elif "already exists" in msg:
+                raise TableAlreadyExistsError(f"table {msg.split()[1]!r} alredy existed.") from None
             
             else:
                 raise SqlthonError(msg) from None
